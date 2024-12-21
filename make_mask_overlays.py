@@ -39,10 +39,12 @@ def plot_image_and_mask(basepath, filename):
     fig.colorbar(im1, ax=ax[1])
     # Masked overlay
     ax[2].set_title("Mask")
+    ax[2].imshow(image, cmap="gray")
+    mask = np.ma.masked_where(binary_image == 0, binary_image, copy=True)
     im2 = ax[2].imshow(
-        binary_image,
+        mask,
         cmap="viridis",
-        alpha=1.0,
+        alpha=0.1,
         vmin=0.0,
         vmax=1.0,
         interpolation="none",
