@@ -46,6 +46,10 @@ def patchify_image(
     # oil from not oil spill patches
     image = imread(os.path.join(src_path, img_dir, img_name + ".tif"), as_gray=True)
     mask = imread(os.path.join(src_path, mask_dir, img_name + ".png"), as_gray=True)
+    # Scale image between 0 and 1
+    min_image = np.min(image)
+    max_image = np.max(image)
+    image = (image - min_image) / (max_image - min_image)
 
     # Verifying that image and mask have the same shape
     image_height, image_width = image.shape
