@@ -21,7 +21,15 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 def patchify_image(
-    src_path, img_dir, mask_dir, dst_path, oil_dir, not_oil_dir, img_name, patch_size
+    src_path,
+    img_dir,
+    mask_dir,
+    dst_path,
+    oil_dir,
+    not_oil_dir,
+    img_name,
+    patch_size,
+    max_not_oil_patches=None,
 ):
     print(
         src_path,
@@ -83,6 +91,10 @@ def patchify_image(
         min_mask_patch = np.min(mask_patch)
         max_mask_patch = np.max(mask_patch)
         if min_mask_patch == 0 and max_mask_patch == 0:
+            if max_not_oil_patches is not None:
+                if max_not_oil_patches == 0:
+                    continue
+                max_not_oil_patches = max_not_oil_patches - 1
             # Not oil patch
             not_oil_mask_patch = not_oil_mask_patch + 1
             # Output on not oil patches directory (for classification problem)
