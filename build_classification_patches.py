@@ -146,6 +146,7 @@ for fname in os.listdir(os.path.join(src_path, "image_tiff")):
             not_oil_dir,
             fname.split(".")[0],
             patch_size,
+            120,
         )
     )
     results["image"].append(fname)
