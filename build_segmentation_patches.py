@@ -25,7 +25,6 @@ def patchify_image(
     dst_path,
     img_name,
     patch_size,
-    max_not_oil_patches=None,
 ):
     print(
         src_path,
@@ -44,6 +43,8 @@ def patchify_image(
     min_image = np.min(image)
     max_image = np.max(image)
     image_scaled = (image - min_image) / (max_image - min_image)
+    # Mark all pixels on the mask above 0 as oil
+    mask[mask > 0] = 1
 
     # Verifying that image and mask have the same shape
     image_height, image_width = image.shape
@@ -59,6 +60,7 @@ def patchify_image(
     oil_patches = 0
     full_oil_patches = 0
     empty_oil_patches = 0
+    pixels_oil = 0
 
     for index, (j, i) in tqdm(
         enumerate(itertools.product(range(count_y), range(count_x)))
@@ -96,6 +98,8 @@ def patchify_image(
             empty_oil_patches = empty_oil_patches + 1
             continue
 
+        # Count how many pixels in the mask are equal to 1
+        pixels_oil += np.sum(mask_patch)
         # We are only saving patches with at least some content of oil
         oil_patches = oil_patches + 1
         imsave(
@@ -109,7 +113,7 @@ def patchify_image(
             check_contrast=False,
         )
     print(
-        f"{img_name}, width, height: ({image_width}, {image_height}), total patches: {total_patches}, invalid_patches: {invalid_patches}, oil patches: {oil_patches}, full oil patches: {full_oil_patches}, empty oil patches: {empty_oil_patches}"
+        f"{img_name}, width, height: ({image_width}, {image_height}), total patches: {total_patches}, invalid_patches: {invalid_patches}, oil patches: {oil_patches}, full oil patches: {full_oil_patches}, empty oil patches: {empty_oil_patches}, pixels oil: {pixels_oil}"
     )
     return (
         image_width,
@@ -119,6 +123,7 @@ def patchify_image(
         oil_patches,
         full_oil_patches,
         empty_oil_patches,
+        pixels_oil,
     )
 
 
@@ -136,6 +141,7 @@ results = {
     "oil_patches": [],
     "full_oil_patches": [],
     "empty_oil_patches": [],
+    "pixels_oil": [],
 }
 for fname in os.listdir(os.path.join(src_path, "image_tiff")):
     (
@@ -146,6 +152,7 @@ for fname in os.listdir(os.path.join(src_path, "image_tiff")):
         oil_patches,
         full_oil_patches,
         empty_oil_patches,
+        pixels_oil,
     ) = patchify_image(
         src_path,
         "image_tiff",
@@ -153,7 +160,6 @@ for fname in os.listdir(os.path.join(src_path, "image_tiff")):
         dst_path,
         fname.split(".")[0],
         patch_size,
-        120,
     )
     results["image"].append(fname)
     results["width"].append(width)
@@ -163,6 +169,7 @@ for fname in os.listdir(os.path.join(src_path, "image_tiff")):
     results["oil_patches"].append(oil_patches)
     results["full_oil_patches"].append(full_oil_patches)
     results["empty_oil_patches"].append(empty_oil_patches)
+    results["pixels_oil"].append(pixels_oil)
 results_df = pd.DataFrame.from_dict(results)
 results_df.to_csv("results_segmentation.csv")
 print("Done!")
