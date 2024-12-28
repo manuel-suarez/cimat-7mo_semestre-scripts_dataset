@@ -3,6 +3,7 @@ import itertools
 import numpy as np
 import pandas as pd
 
+from matplotlib import pyplot as plt
 from skimage.io import imread, imsave
 from PIL import Image
 from tqdm import tqdm
@@ -107,13 +108,32 @@ def patchify_image(
             image_scaled_patch,
             check_contrast=False,
         )
+        # Save in png for visualization
+        imsave(
+            os.path.join(dst_path, "images_png", dst_img_name + ".png"),
+            (image_scaled_patch * 255).astype(np.int8),
+            check_contrast=False,
+        )
         imsave(
             os.path.join(dst_path, "labels", dst_img_name + ".png"),
             mask_patch,
             check_contrast=False,
         )
+        # Save figure with image and mask patches
+        fig, ax = plt.subplots(1, 2, figsize=(12, 8))
+        ax[0].imshow(image_scaled_patch, cmap="gray")
+        ax[0].set_title("Image patch")
+        ax[1].imshow(mask_patch, cmap="gray")
+        ax[1].set_title("Mask patch")
+        fig.tight_layout()
+        fig.suptitle(dst_img_name)
+        plt.savefig(os.path.join(dst_path, "figures", dst_img_name + ".png"))
+        plt.close()
+    # Calculate percentage of pixel oils
+    total_pixels = oil_patches * patch_size * patch_size
+    percentage_pixels_oil = round(pixels_oil / total_pixels * 100, 2)
     print(
-        f"{img_name}, width, height: ({image_width}, {image_height}), total patches: {total_patches}, invalid_patches: {invalid_patches}, oil patches: {oil_patches}, full oil patches: {full_oil_patches}, empty oil patches: {empty_oil_patches}, pixels oil: {pixels_oil}"
+        f"{img_name}, width, height: ({image_width}, {image_height}), total patches: {total_patches}, invalid_patches: {invalid_patches}, oil patches: {oil_patches}, full oil patches: {full_oil_patches}, empty oil patches: {empty_oil_patches}, total pixels: {total_pixels}, pixels oil: {pixels_oil}, percentage pixels_oil: {percentage_pixels_oil}"
     )
     return (
         image_width,
@@ -123,14 +143,18 @@ def patchify_image(
         oil_patches,
         full_oil_patches,
         empty_oil_patches,
+        total_pixels,
         pixels_oil,
+        percentage_pixels_oil,
     )
 
 
 # Create output directories
 os.makedirs(dst_path, exist_ok=True)
 os.makedirs(os.path.join(dst_path, "images"), exist_ok=True)
+os.makedirs(os.path.join(dst_path, "images_png"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "labels"), exist_ok=True)
+os.makedirs(os.path.join(dst_path, "figures"), exist_ok=True)
 
 results = {
     "image": [],
@@ -141,7 +165,9 @@ results = {
     "oil_patches": [],
     "full_oil_patches": [],
     "empty_oil_patches": [],
+    "total_pixels": [],
     "pixels_oil": [],
+    "percentage_pixels_oil": [],
 }
 for fname in os.listdir(os.path.join(src_path, "image_tiff")):
     (
@@ -152,7 +178,9 @@ for fname in os.listdir(os.path.join(src_path, "image_tiff")):
         oil_patches,
         full_oil_patches,
         empty_oil_patches,
+        total_pixels,
         pixels_oil,
+        percentage_pixels_oil,
     ) = patchify_image(
         src_path,
         "image_tiff",
@@ -169,7 +197,9 @@ for fname in os.listdir(os.path.join(src_path, "image_tiff")):
     results["oil_patches"].append(oil_patches)
     results["full_oil_patches"].append(full_oil_patches)
     results["empty_oil_patches"].append(empty_oil_patches)
+    results["total_pixels"].append(total_pixels)
     results["pixels_oil"].append(pixels_oil)
+    results["percentage_pixels_oil"].append(percentage_pixels_oil)
 results_df = pd.DataFrame.from_dict(results)
 results_df.to_csv("results_segmentation.csv")
 print("Done!")
