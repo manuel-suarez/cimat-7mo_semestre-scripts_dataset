@@ -104,16 +104,13 @@ def patchify_image(
         # We are only saving patches with at least some content of oil
         oil_patches = oil_patches + 1
         imsave(
-            os.path.join(dst_path, "images", dst_img_name + ".tif"),
+            os.path.join(dst_path, "features", "origin", dst_img_name + ".tif"),
             image_scaled_patch,
             check_contrast=False,
         )
         # Save in png for visualization
-        imsave(
-            os.path.join(dst_path, "images_png", dst_img_name + ".png"),
-            (image_scaled_patch * 255).astype(np.int8),
-            check_contrast=False,
-        )
+        image_to_save = Image.fromarray((image_scaled_patch * 255).astype(np.int16))
+        image_to_save.save(os.path.join(dst_path, "images", dst_img_name + ".png"))
         imsave(
             os.path.join(dst_path, "labels", dst_img_name + ".png"),
             mask_patch,
@@ -151,8 +148,8 @@ def patchify_image(
 
 # Create output directories
 os.makedirs(dst_path, exist_ok=True)
+os.makedirs(os.path.join(dst_path, "features", "origin"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "images"), exist_ok=True)
-os.makedirs(os.path.join(dst_path, "images_png"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "labels"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "figures"), exist_ok=True)
 
