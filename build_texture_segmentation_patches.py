@@ -43,19 +43,25 @@ def patchify_image(
     # considering that we are removing outside regions pixels (SAR image) and separating
     # oil from not oil spill patches
     image = rasterio.open(os.path.join(src_path, img_dir, img_name + ".tif")).read(1)
-    mask = imread(os.path.join(src_path, mask_dir, img_name + ".png"), as_gray=True)
+    mask = imread(
+        os.path.join(src_path, mask_dir, img_name + ".png"), as_gray=True
+    ).astype(np.uint8)
+    print("Mask: ", mask.min(), mask.max(), mask.shape, mask.dtype)
+    mask[mask > 0] = 1
+    print("Mask: ", mask.min(), mask.max(), mask.shape, mask.dtype)
     # Scale image between 0 and 1
     min_image = np.min(image)
     max_image = np.max(image)
     image_scaled = (image - min_image) / (max_image - min_image)
     # Mark all pixels on the mask above 0 as oil
-    mask[mask > 0] = 1
 
     # Verifying that image and mask have the same shape
     image_height, image_width = image.shape
     mask_height, mask_width = mask.shape
     if (image_height != mask_height) or (image_width != mask_width):
         print("Error, image and mask must have the same dimensions")
+        print("Image dimensions: ", image_height, image_width)
+        print("Mask dimensions: ", mask_height, mask_width)
         exit(-1)
 
     count_x = int(image_width // patch_size) + 1
@@ -88,11 +94,11 @@ def patchify_image(
         min_image_patch = np.min(image_patch)
         max_image_patch = np.max(image_patch)
         # We are checking if patch image values are 0, if so then continue next patch
-        # (we are in an invalid SAR image patch) 
+        # (we are in an invalid SAR image patch)
         if min_image_patch == 0 and max_image_patch == 0:
             invalid_patches = invalid_patches + 1
             continue
-        dst_img_name = img_name + f"_{index:04d}_train"
+        dst_img_name = img_name + f"_{index:04d}"
         mask_patch = mask[y : y + patch_size, x : x + patch_size]
         min_mask_patch = np.min(mask_patch)
         max_mask_patch = np.max(mask_patch)
@@ -129,7 +135,7 @@ def patchify_image(
         ax[1].set_title("Mask patch")
         fig.tight_layout()
         fig.suptitle(dst_img_name)
-        plt.savefig(os.path.join(dst_path, "figures", dst_img_name + ".png"))
+        plt.savefig(os.path.join(dst_path, "figures", "images", img_name + ".png"))
         plt.close()
     # Calculate percentage of pixel oils
     total_pixels = oil_patches * patch_size * patch_size
@@ -138,17 +144,26 @@ def patchify_image(
         f"{img_name}, width, height: ({image_width}, {image_height}), total patches: {total_patches}, invalid_patches: {invalid_patches}, oil patches: {oil_patches}, full oil patches: {full_oil_patches}, empty oil patches: {empty_oil_patches}, total pixels: {total_pixels}, pixels oil: {pixels_oil}, percentage pixels_oil: {percentage_pixels_oil}"
     )
     # Now traverse texture directories
-    for texture_dir in os.listdir(txt_path):
+    for texture_dir in os.listdir(os.path.join(src_path, txt_path)):
+        print(f"Texture: {texture_dir}")
         # Open texture image
-        texture_image = rasterio.open(os.path.join(src_path, txt_path, texture_dir, img_name + ".tif")).read(1)
+        texture_image = rasterio.open(
+            os.path.join(src_path, txt_path, texture_dir, img_name + ".tif")
+        ).read(1)
         # Scale texture_image between 0 and 1
-        texture_image_scaled = (texture_image - texture_image.min()) / (texture_image.max() - texture_image.min())
+        texture_image_scaled = (texture_image - texture_image.min()) / (
+            texture_image.max() - texture_image.min()
+        )
 
         # Verifying that image and mask have the same shape
         texture_image_height, texture_image_width = texture_image.shape
-        if (texture_image_height != mask_height) or (texture_image_width != mask_width):
-            print(f"Error, texture image {texture_dir} and mask must have the same dimensions")
-            exit(-1)
+        # if (texture_image_height != mask_height) or (texture_image_width != mask_width):
+        #    print(
+        #        f"Error, texture image {texture_dir} and mask must have the same dimensions"
+        #    )
+        #    print("Texture dimensions: ", texture_image_height, texture_image_width)
+        #    print("Mask dimensions: ", mask_height, mask_width)
+        #    exit(-1)
 
         for index, (j, i) in tqdm(
             enumerate(itertools.product(range(count_y), range(count_x)))
@@ -166,14 +181,16 @@ def patchify_image(
             # Original image patch
             image_patch = image[y : y + patch_size, x : x + patch_size]
             # Scaled image patch
-            texture_image_scaled_patch = texture_image_scaled[y : y + patch_size, x : x + patch_size]
+            texture_image_scaled_patch = texture_image_scaled[
+                y : y + patch_size, x : x + patch_size
+            ]
             min_image_patch = np.min(image_patch)
             max_image_patch = np.max(image_patch)
             # We are checking if patch image values are 0, if so then continue next patch
-            # (we are in an invalid SAR image patch) 
+            # (we are in an invalid SAR image patch)
             if min_image_patch == 0 and max_image_patch == 0:
                 continue
-            dst_img_name = img_name + f"_{index:04d}_train"
+            dst_img_name = img_name + f"_{index:04d}"
             mask_patch = mask[y : y + patch_size, x : x + patch_size]
             min_mask_patch = np.min(mask_patch)
             max_mask_patch = np.max(mask_patch)
@@ -186,9 +203,14 @@ def patchify_image(
 
             # Count how many pixels in the mask are equal to 1
             # We are only saving patches with at least some content of oil
-            os.makedirs(os.path.join(dst_path,"features","texture","texture_dir"),exist_ok=True)
+            os.makedirs(
+                os.path.join(dst_path, "features", "texture", texture_dir),
+                exist_ok=True,
+            )
             imsave(
-                os.path.join(dst_path, "features", "texture", texture_dir, dst_img_name + ".tif"),
+                os.path.join(
+                    dst_path, "features", "texture", texture_dir, dst_img_name + ".tif"
+                ),
                 texture_image_scaled_patch,
                 check_contrast=False,
             )
@@ -206,10 +228,11 @@ def patchify_image(
         percentage_pixels_oil,
     )
 
+
 parser = argparse.ArgumentParser(
     prog="GenTexturePatches", description="Generate texture patches"
-        )
-parser.add_argument('filename')
+)
+parser.add_argument("--filename")
 args = parser.parse_args()
 print(args)
 
@@ -219,11 +242,13 @@ os.makedirs(os.path.join(dst_path, "features", "origin"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "images"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "labels"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "figures"), exist_ok=True)
+os.makedirs(os.path.join(dst_path, "figures", "images"), exist_ok=True)
+os.makedirs(os.path.join(dst_path, "figures", "texture"), exist_ok=True)
 
 fname = args.filename
 patchify_image(
     src_path,
-    "image_tiff",
+    "tiff",
     "mask_bin",
     dst_path,
     "textures",
