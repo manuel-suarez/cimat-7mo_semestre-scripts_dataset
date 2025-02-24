@@ -14,6 +14,8 @@ data_path = os.path.join(home_path, "data", "cimat")
 src_path = os.path.join(data_path, "dataset-cimat")
 dst_path = os.path.join(data_path, "dataset-cimat", "segmentation")
 # Initial configuration
+image_path = "image_norm"
+label_path = "mask_bin"
 patch_size = 224
 
 Image.MAX_IMAGE_PIXELS = None
