@@ -13,12 +13,33 @@ OUTPUT_DIR=$2
 SOURCE_DIR="${SOURCE_DIR%/}/"
 OUTPUT_DIR="${OUTPUT_DIR%/}/"
 
+# Get list of .xcf files and assign to SLURM array tasks ids
+FILES=($(ls "$SOURCE_DIR"*.xcf)) # Get all XCF files
+NUM_FILES=${#FILES[@]} # Total number of files  
+
+# Determine how many files each task should process
+TASK_ID=${SLURM_ARRAY_TASK_ID}
+NUM_TASKS=${SLURM_ARRAY_TASK_COUNT:-10}
+FILES_PER_TASK=$(( (NUM_FILES + NUM_TASKS - 1) / NUM_TASKS ))
+
+# Compute start and end indices for this task
+START_INDEX=$(( TASK_ID * FILES_PER_TASK ))
+END_INDEX=$(( START_INDEX + FILES_PER_TASK - 1 ))
+
+# Check array limits
+if [ "$END_INDEX" -ge "$NUM_FILES" ]; then
+  END_INDEX=$((NUM_FILES - 1))
+fi
+
+# Process only the assigned chunk of files
+echo "Processing files $START_INDEX to $END_INDEX on task $TASK_ID"
+
 # Run GIMP batch script
 gimp -n -i -b - <<EOF
 (let* ( 
     (source-dir "$SOURCE_DIR")  
     (output-dir "$OUTPUT_DIR")  
-    (file's (cadr (file-glob (string-append source-dir "*.xcf") 1))) 
+    (file's (list ${FILES[@]:$START_INDEX:$FILES_PER_TASK})) 
     (filename "") 
     (image 0) 
     (layer 0) 
