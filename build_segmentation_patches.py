@@ -20,6 +20,16 @@ patch_size = 224
 
 Image.MAX_IMAGE_PIXELS = None
 
+# Definimos el modelo U-Net con un backbone preentrenado (ResNet)
+slurm_array_task_id = os.getenv("SLURM_ARRAY_TASK_ID")
+slurm_ntasks = os.getenv("SLURM_NTASKS")
+slurm_procid = os.getenv("SLURM_PROCID")
+slurm_task_pid = os.getenv("SLURM_TASK_PID")
+print("SLURM_ARRAY_TASK_ID: ", slurm_array_task_id)
+print("SLURM_NTASKS: ", slurm_ntasks)
+print("SLURM_PROCID: ", slurm_procid)
+print("SLURM_TASK_PID: ", slurm_task_pid)
+
 
 def patchify_image(
     src_path,
@@ -58,16 +68,27 @@ def patchify_image(
 
     count_x = int(image_width // patch_size) + 1
     count_y = int(image_height // patch_size) + 1
-    invalid_patches = 0
-    total_patches = 0
-    oil_patches = 0
-    full_oil_patches = 0
-    empty_oil_patches = 0
-    pixels_oil = 0
 
-    for index, (j, i) in tqdm(
-        enumerate(itertools.product(range(count_y), range(count_x)))
-    ):
+    total_patches = count_x * count_y
+    patches_per_task = total_patches // int(slurm_ntasks)
+    missing_patches_per_task = total_patches % int(slurm_ntasks)
+
+    patches_indexes = [
+        int(slurm_procid) * patches_per_task + index
+        for index in range(patches_per_task)
+    ]
+    if int(slurm_procid) < missing_patches_per_task:
+        additional_index = int(slurm_ntasks) * patches_per_task + int(slurm_procid)
+        patches_indexes.append(additional_index)
+
+    print("Patches indexes: ", patches_indexes)
+
+    # Build patchex indexes to process considering the max patches, ntasks and task process id
+    patches_positions = list(itertools.product(range(count_y), range(count_x)))
+    for patch_index in patches_indexes:
+        j, i = patches_positions[patch_index]
+
+        print("Processing patch index: ", patch_index, i, j)
         # Get pixel positions for patch
         y = patch_size * j
         x = patch_size * i
@@ -89,22 +110,9 @@ def patchify_image(
         # if min_image_patch == 0 and max_image_patch == 0:
         #    invalid_patches = invalid_patches + 1
         #    continue
-        dst_img_name = img_name + f"_{index:04d}_train"
+        dst_img_name = img_name + f"_{patch_index:04d}_train"
         mask_patch = mask[y : y + patch_size, x : x + patch_size]
-        min_mask_patch = np.min(mask_patch)
-        max_mask_patch = np.max(mask_patch)
-        if min_mask_patch == 1 and max_mask_patch == 1:
-            # Full oil patch
-            full_oil_patches = full_oil_patches + 1
-        if min_mask_patch == 0 and max_mask_patch == 0:
-            # Empty oil patch
-            empty_oil_patches = empty_oil_patches + 1
-            # continue
 
-        # Count how many pixels in the mask are equal to 1
-        pixels_oil += np.sum(mask_patch)
-        # We are only saving patches with at least some content of oil
-        oil_patches = oil_patches + 1
         imsave(
             os.path.join(dst_path, "features", "origin", dst_img_name + ".tif"),
             image_scaled_patch,
@@ -128,24 +136,6 @@ def patchify_image(
         fig.suptitle(dst_img_name)
         plt.savefig(os.path.join(dst_path, "figures", dst_img_name + ".png"))
         plt.close()
-    # Calculate percentage of pixel oils
-    total_pixels = oil_patches * patch_size * patch_size
-    percentage_pixels_oil = round(pixels_oil / total_pixels * 100, 2)
-    print(
-        f"{img_name}, width, height: ({image_width}, {image_height}), total patches: {total_patches}, invalid_patches: {invalid_patches}, oil patches: {oil_patches}, full oil patches: {full_oil_patches}, empty oil patches: {empty_oil_patches}, total pixels: {total_pixels}, pixels oil: {pixels_oil}, percentage pixels_oil: {percentage_pixels_oil}"
-    )
-    return (
-        image_width,
-        image_height,
-        total_patches,
-        invalid_patches,
-        oil_patches,
-        full_oil_patches,
-        empty_oil_patches,
-        total_pixels,
-        pixels_oil,
-        percentage_pixels_oil,
-    )
 
 
 # Create output directories
@@ -155,50 +145,13 @@ os.makedirs(os.path.join(dst_path, "images"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "labels"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "figures"), exist_ok=True)
 
-results = {
-    "image": [],
-    "width": [],
-    "height": [],
-    "total_patches": [],
-    "invalid_patches": [],
-    "oil_patches": [],
-    "full_oil_patches": [],
-    "empty_oil_patches": [],
-    "total_pixels": [],
-    "pixels_oil": [],
-    "percentage_pixels_oil": [],
-}
-for fname in os.listdir(os.path.join(src_path, "image_norm")):
-    (
-        width,
-        height,
-        total_patches,
-        invalid_patches,
-        oil_patches,
-        full_oil_patches,
-        empty_oil_patches,
-        total_pixels,
-        pixels_oil,
-        percentage_pixels_oil,
-    ) = patchify_image(
-        src_path,
-        "image_tiff",
-        "mask_bin",
-        dst_path,
-        fname.split(".")[0],
-        patch_size,
-    )
-    results["image"].append(fname)
-    results["width"].append(width)
-    results["height"].append(height)
-    results["total_patches"].append(total_patches)
-    results["invalid_patches"].append(invalid_patches)
-    results["oil_patches"].append(oil_patches)
-    results["full_oil_patches"].append(full_oil_patches)
-    results["empty_oil_patches"].append(empty_oil_patches)
-    results["total_pixels"].append(total_pixels)
-    results["pixels_oil"].append(pixels_oil)
-    results["percentage_pixels_oil"].append(percentage_pixels_oil)
-results_df = pd.DataFrame.from_dict(results)
-results_df.to_csv("results_segmentation.csv")
+fname = os.listdir(os.path.join(src_path, "image_norm"))[int(slurm_array_task_id) - 1]
+patchify_image(
+    src_path,
+    "image_norm",
+    "mask_bin",
+    dst_path,
+    fname.split(".")[0],
+    patch_size,
+)
 print("Done!")
