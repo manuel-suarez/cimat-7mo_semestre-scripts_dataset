@@ -2,64 +2,33 @@
 
 \usepackage{booktabs}
 \usepackage{graphicx}
-\usepackage[legalpaper, landscape, margin=0.5in]{geometry}
+\usepackage[letterpaper, portrait, margin=0.5in]{geometry}
+\usepackage{tikz}
+
+\newcommand{\graphic}[3]{
+\begin{figure}[!ht]
+  \centering
+  \begin{center}
+    \includegraphics[scale=0.35]{figures/#1#2#3.png}
+  \end{center}
+  \caption{#1-#2-#3}\label{fig:#1_#2_#3}
+\end{figure}
+}
 
 \begin{document}
 
-\section{DWH Images}
+\graphic{2010}{04}{29}
 
-\subsection{April, 2010}
-\subsubsection{2010/04/29}
+\foreach \d in {02,09,12,15,24,28,31}{
+  \graphic{2010}{05}{\d}
+}
 
-\subsection{May, 2010}
-\subsubsection{2010/05/02}
-\begin{figure}
-  \begin{center}
-    \includegraphics[scale=0.9]{figures/ASA_WSM_1PNPDE20100429_034544_000000862089_00033_42672_7432.png}
-  \end{center}
-  \caption{Segmentation}\label{fig:2010_05_02}
-\end{figure}
+\foreach \d in {03,06,09,13,19,22,25,28}{
+  \graphic{2010}{06}{\d}
+}
 
-\subsubsection{2010/05/09}
-
-\subsubsection{2010/05/12}
-
-\subsubsection{2010/05/15}
-
-\subsubsection{2010/05/24}
-
-\subsubsection{2010/05/28}
-
-\subsubsection{2010/05/31}
-
-\subsection{June, 2010}
-\subsubsection{2010/06/03}
-
-\subsubsection{2010/06/06}
-
-\subsubsection{2010/06/09}
-
-\subsubsection{2010/06/13}
-
-\subsubsection{2010/06/19}
-
-\subsubsection{2010/06/22}
-
-\subsubsection{2010/06/25}
-
-\subsubsection{2010/06/28}
-
-\subsection{July, 2010}
-
-\subsubsection{2010/07/02}
-
-\subsubsection{2010/07/05}
-
-\subsubsection{2010/07/08}
-\subsubsection{2010/07/11}
-\subsubsection{2010/07/14}
-\subsubsection{2010/07/18}
-\subsubsection{2010/07/21}
-\subsubsection{2010/07/24}
+\foreach \d in {02,05,08,11,14,18,21,24}{
+  \graphic{2010}{07}{\d}
+}
 
 \end{document}
