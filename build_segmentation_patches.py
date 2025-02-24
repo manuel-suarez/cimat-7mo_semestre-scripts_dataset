@@ -14,6 +14,8 @@ data_path = os.path.join(home_path, "data", "cimat")
 src_path = os.path.join(data_path, "dataset-cimat")
 dst_path = os.path.join(data_path, "dataset-cimat", "segmentation")
 # Initial configuration
+image_path = "image_norm"
+label_path = "mask_bin"
 patch_size = 224
 
 Image.MAX_IMAGE_PIXELS = None
@@ -84,9 +86,9 @@ def patchify_image(
         min_image_patch = np.min(image_patch)
         max_image_patch = np.max(image_patch)
         # We are checking if patch image values are 0, if so then continue next patch (we are in an invalid SAR image patch)
-        if min_image_patch == 0 and max_image_patch == 0:
-            invalid_patches = invalid_patches + 1
-            continue
+        # if min_image_patch == 0 and max_image_patch == 0:
+        #    invalid_patches = invalid_patches + 1
+        #    continue
         dst_img_name = img_name + f"_{index:04d}_train"
         mask_patch = mask[y : y + patch_size, x : x + patch_size]
         min_mask_patch = np.min(mask_patch)
@@ -97,7 +99,7 @@ def patchify_image(
         if min_mask_patch == 0 and max_mask_patch == 0:
             # Empty oil patch
             empty_oil_patches = empty_oil_patches + 1
-            continue
+            # continue
 
         # Count how many pixels in the mask are equal to 1
         pixels_oil += np.sum(mask_patch)
@@ -166,7 +168,7 @@ results = {
     "pixels_oil": [],
     "percentage_pixels_oil": [],
 }
-for fname in os.listdir(os.path.join(src_path, "image_tiff")):
+for fname in os.listdir(os.path.join(src_path, "image_norm")):
     (
         width,
         height,
