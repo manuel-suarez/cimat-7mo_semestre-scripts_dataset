@@ -8,4 +8,4 @@
 #SBATCH --ntasks=500
 #SBATCH --output=outputs/slurm-count_pixels-%A_%a.out
 
-srun /home/$(whoami)/tools/anaconda3/envs/py3.9-pt/bin/python count_patches_pixels.py
+srun /home/$(whoami)/tools/anaconda3/envs/py3.9-pt/bin/python sum_patches_pixels.py
