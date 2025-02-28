@@ -88,40 +88,34 @@ def count_patch_pixels(
     for patch_index in patches_indexes:
         j, i = patches_positions[patch_index]
 
-        print("Processing patch index: ", patch_index, i, j)
-        # Get pixel positions for patch
-        y = patch_size * j
-        x = patch_size * i
-
-        # Crop whenever patch size is outside image
-        if x + patch_size > image_width:
-            x = image_width - patch_size - 1
-        if y + patch_size > image_height:
-            y = image_height - patch_size - 1
-
-        # Original image patch
-        image_patch = image[y : y + patch_size, x : x + patch_size]
-        # Scaled image patch
-        image_scaled_patch = image_scaled[y : y + patch_size, x : x + patch_size]
-        total_patches = total_patches + 1
-        min_image_patch = np.min(image_patch)
-        max_image_patch = np.max(image_patch)
-        # We are checking if patch image values are 0, if so then continue next patch (we are in an invalid SAR image patch)
-        # if min_image_patch == 0 and max_image_patch == 0:
-        #    invalid_patches = invalid_patches + 1
-        #    continue
+        print("Opening patch index: ", patch_index, i, j)
         dst_img_name = img_name + f"_{patch_index:04d}_train"
-        mask_patch = mask[y : y + patch_size, x : x + patch_size]
+        # Get pixel positions for patch
+        patch_image = imread(
+            os.path.join(dst_path, "features", "origin", dst_img_name + ".tif")
+        )
+        patch_label = imread(os.path.join(dst_path, "labels", dst_img_name + ".png"))
 
         # Count pixels
-        oil_pixels = mask_patch[mask_patch == 1].sum()
-        not_oil_pixels = mask_patch[mask_patch == 0].sum()
+        total_pixels = patch_label.shape[0] * patch_label.shape[1]
+        oil_pixels = np.count_nonzero(patch_label == 1)
+        sea_pixels = np.count_nonzero(patch_label == 0)
 
         # Save dataframe
         mask_patch_dict = {
             "patch_name": [dst_img_name],
+            "total_pixels": [total_pixels],
             "oil_pixels": [oil_pixels],
-            "not_oil_pixels": [not_oil_pixels],
+            "sea_pixels": [sea_pixels],
+            "invalid_patch": [
+                int(patch_image.min() == patch_image.max() and patch_image.max() == 1)
+            ],
+            "full_oil_patch": [
+                int(patch_label.min() == patch_label.max() and patch_label.min() == 1)
+            ],
+            "full_sea_patch": [
+                int(patch_label.min() == patch_label.max() and patch_label.max() == 0)
+            ],
         }
         mask_patch_df = pd.DataFrame.from_dict(mask_patch_dict)
         mask_patch_df.to_csv(
@@ -131,10 +125,6 @@ def count_patch_pixels(
 
 # Create output directories
 os.makedirs(dst_path, exist_ok=True)
-os.makedirs(os.path.join(dst_path, "features", "origin"), exist_ok=True)
-os.makedirs(os.path.join(dst_path, "images"), exist_ok=True)
-os.makedirs(os.path.join(dst_path, "labels"), exist_ok=True)
-os.makedirs(os.path.join(dst_path, "figures"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "counts", "patches"), exist_ok=True)
 
 fname = os.listdir(os.path.join(src_path, "image_norm"))[int(slurm_array_task_id) - 1]

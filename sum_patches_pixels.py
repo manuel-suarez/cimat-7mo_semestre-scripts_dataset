@@ -37,9 +37,18 @@ def count_patch_pixels(
         img_name,
         patch_size,
     )
-    mask_patches_dict = {"patch_name": [], "oil_pixels": [], "not_oil_pixels": []}
+    mask_patches_dict = {
+        "patch_name": [],
+        "total_pixels": [],
+        "oil_pixels": [],
+        "sea_pixels": [],
+        "invalid_patch": [],
+        "full_oil_patch": [],
+        "full_sea_patch": [],
+    }
+    total_pixels = 0
     oil_pixels = 0
-    not_oil_pixels = 0
+    sea_pixels = 0
     # In this case we are opening both image and mask to patchify at the same time
     # considering that we are removing outside regions pixels (SAR image) and separating
     # oil from not oil spill patches
@@ -80,15 +89,23 @@ def count_patch_pixels(
         mask_patch_df = pd.read_csv(
             os.path.join(dst_path, "counts", "patches", dst_img_name + ".csv")
         )
+        total_pixels += mask_patch_df["total_pixels"].iloc[0]
         oil_pixels += mask_patch_df["oil_pixels"].iloc[0]
-        not_oil_pixels += mask_patch_df["not_oil_pixels"].iloc[0]
+        sea_pixels += mask_patch_df["sea_pixels"].iloc[0]
         mask_patches_dict["patch_name"].append(mask_patch_df["patch_name"].iloc[0])
         mask_patches_dict["oil_pixels"].append(mask_patch_df["oil_pixels"].iloc[0])
-        mask_patches_dict["not_oil_pixels"].append(
-            mask_patch_df["not_oil_pixels"].iloc[0]
+        mask_patches_dict["sea_pixels"].append(mask_patch_df["sea_pixels"].iloc[0])
+        mask_patches_dict["invalid_patch"].append(
+            mask_patch_df["invalid_patch"].iloc[0]
+        )
+        mask_patches_dict["full_oil_patch"].append(
+            mask_patch_df["full_oil_patch"].iloc[0]
+        )
+        mask_patches_dict["full_sea_patch"].append(
+            mask_patch_df["full_sea_patch"].iloc[0]
         )
 
-    return mask_patches_dict, oil_pixels, not_oil_pixels
+    return mask_patches_dict, total_pixels, oil_pixels, sea_pixels
 
 
 # Create output directories
@@ -100,17 +117,25 @@ os.makedirs(os.path.join(dst_path, "figures"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "counts", "images"), exist_ok=True)
 os.makedirs(os.path.join(dst_path, "counts", "totals"), exist_ok=True)
 
-mask_images_dict = {"image_name": [], "oil_pixels": [], "not_oil_pixels": []}
+mask_images_dict = {
+    "image_name": [],
+    "total_pixels": [],
+    "oil_pixels": [],
+    "sea_pixels": [],
+}
+total_pixels = 0
 total_oil_pixels = 0
-total_not_oil_pixels = 0
+total_sea_pixels = 0
 for fname in os.listdir(os.path.join(src_path, "image_norm")):
-    image_patches_dict, image_oil_pixels, image_not_oil_pixels = count_patch_pixels(
-        src_path,
-        "image_norm",
-        "mask_bin",
-        dst_path,
-        fname.split(".")[0],
-        patch_size,
+    image_patches_dict, image_total_pixels, image_oil_pixels, image_sea_pixels = (
+        count_patch_pixels(
+            src_path,
+            "image_norm",
+            "mask_bin",
+            dst_path,
+            fname.split(".")[0],
+            patch_size,
+        )
     )
     # Save image patches CSV
     image_patches_df = pd.DataFrame.from_dict(image_patches_dict)
@@ -119,16 +144,17 @@ for fname in os.listdir(os.path.join(src_path, "image_norm")):
     )
     # Accumulate images CSV
     mask_images_dict["image_name"].append(fname)
+    mask_images_dict["total_pixels"].append(image_total_pixels)
     mask_images_dict["oil_pixels"].append(image_oil_pixels)
-    mask_images_dict["not_oil_pixels"].append(image_not_oil_pixels)
+    mask_images_dict["sea_pixels"].append(image_sea_pixels)
     # Total CSV
     total_oil_pixels += image_oil_pixels
-    total_not_oil_pixels += image_not_oil_pixels
+    total_sea_pixels += image_sea_pixels
 
 # Save totals
 mask_totals_dict = {
     "oil_pixels": [total_oil_pixels],
-    "not_oil_pixels": [total_not_oil_pixels],
+    "sea_pixels": [total_sea_pixels],
 }
 mask_totals_df = pd.DataFrame.from_dict(mask_totals_dict)
 mask_totals_df.to_csv(os.path.join(dst_path, "counts", "totals", "total_count.csv"))
