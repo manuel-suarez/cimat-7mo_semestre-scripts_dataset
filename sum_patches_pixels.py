@@ -93,6 +93,7 @@ def count_patch_pixels(
         oil_pixels += mask_patch_df["oil_pixels"].iloc[0]
         sea_pixels += mask_patch_df["sea_pixels"].iloc[0]
         mask_patches_dict["patch_name"].append(mask_patch_df["patch_name"].iloc[0])
+        mask_patches_dict["total_pixels"].append(mask_patch_df["total_pixels"].iloc[0])
         mask_patches_dict["oil_pixels"].append(mask_patch_df["oil_pixels"].iloc[0])
         mask_patches_dict["sea_pixels"].append(mask_patch_df["sea_pixels"].iloc[0])
         mask_patches_dict["invalid_patch"].append(
