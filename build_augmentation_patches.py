@@ -79,13 +79,15 @@ for index, row in tqdm(mask_images_patches.iterrows()):
             # Save
             imsave(
                 os.path.join(
-                    dst_path, "features", "origin", patch_name + f"_aug{i:03d}.png"
+                    dst_path, "features", "origin", patch_name + f"_aug{i:03d}.tif"
                 ),
                 transformed_image,
+                check_contrast=False,
             )
             imsave(
                 os.path.join(dst_path, "labels", patch_name + f"_aug{i:03d}.png"),
                 transformed_mask,
+                check_contrast=False,
             )
 
         augmented_oil_pixels += patch_oil_pixels * num_of_patches
