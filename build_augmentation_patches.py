@@ -2,6 +2,7 @@ import os
 import itertools
 import numpy as np
 import pandas as pd
+import albumentations as A
 
 from matplotlib import pyplot as plt
 from skimage.io import imread, imsave
@@ -47,6 +48,14 @@ print(
 print(
     f"Percentage of pixel counts, oil: {round(total_oil_pixels/total_pixels,2)}, sea: {round(total_sea_pixels/total_pixels,2)}"
 )
+# Define transforms
+transform = A.Compose(
+    [
+        A.RandomCrop(width=224, height=224),
+        A.HorizontalFlip(p=0.5),
+        A.RandomBrightnessContrast(p=0.2),
+    ]
+)
 # Iterate over list of patches augmenting those with more than 10% of oil pixels until we have approximate the equal
 augmented_oil_pixels = 0
 augmented_sea_pixels = 0
@@ -57,6 +66,28 @@ for index, row in mask_images_patches.iterrows():
     patch_percentage_oil_pixels = round(patch_oil_pixels / patch_total_pixels * 100, 2)
     if patch_percentage_oil_pixels >= 10.0:
         num_of_patches = int(round(patch_percentage_oil_pixels, 0))
+        patch_name = row["patch_name"]
+        patch_image = imread(
+            os.path.join(dst_path, "features", "origin", patch_name + ".tif")
+        )
+        patch_label = imread(os.path.join(dst_path, "labels", patch_name + ".png"))
+        for i in range(num_of_patches):
+            # Apply augmentation and save
+            transformed = transform(image=patch_image, mask=patch_label)
+            transformed_image = transformed["image"]
+            transformed_mask = transformed["mask"]
+            # Save
+            imsave(
+                os.path.join(
+                    dst_path, "features", "origin", patch_name + f"_aug{i:03d}.png"
+                ),
+                transformed_image,
+            )
+            imsave(
+                os.path.join(dst_path, "labels", patch_name + f"_aug{i:03d}.png"),
+                transformed_mask,
+            )
+
         augmented_oil_pixels += patch_oil_pixels * num_of_patches
         augmented_sea_pixels += patch_sea_pixels * num_of_patches
         total_mask_patches += num_of_patches
