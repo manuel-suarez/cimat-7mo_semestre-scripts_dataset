@@ -26,7 +26,7 @@ mask_totals_df = pd.read_csv(
 )
 total_oil_pixels = mask_totals_df["oil_pixels"].iloc[0]
 total_sea_pixels = mask_totals_df["sea_pixels"].iloc[0]
-total_pixels = mask_totals_df["total_pixels"].iloc[0]
+total_pixels = total_oil_pixels + total_sea_pixels
 # Open list of patches counts per image
 image_patches_dfs = []
 for fname in os.listdir(os.path.join(src_path, "image_norm")):
@@ -36,6 +36,8 @@ for fname in os.listdir(os.path.join(src_path, "image_norm")):
     image_patches_dfs.append(image_patches_df)
 # Join dataframe
 mask_images_patches = pd.concat(image_patches_dfs)
+print("Mask images patches: ", len(mask_images_patches))
+total_mask_patches = len(mask_images_patches)
 # Sort by oil pixels (descending)
 mask_images_patches = mask_images_patches.sort_values("oil_pixels", ascending=False)
 
@@ -52,21 +54,31 @@ for index, row in mask_images_patches.iterrows():
     patch_oil_pixels = row["oil_pixels"]
     patch_sea_pixels = row["sea_pixels"]
     patch_total_pixels = row["total_pixels"]
-    if round(patch_oil_pixels / patch_total_pixels, 2) >= 10.0:
-        augmented_oil_pixels += patch_oil_pixels
-        augmented_sea_pixels += patch_sea_pixels
+    patch_percentage_oil_pixels = round(patch_oil_pixels / patch_total_pixels * 100, 2)
+    if patch_percentage_oil_pixels >= 10.0:
+        num_of_patches = int(round(patch_percentage_oil_pixels, 0))
+        augmented_oil_pixels += patch_oil_pixels * num_of_patches
+        augmented_sea_pixels += patch_sea_pixels * num_of_patches
+        total_mask_patches += num_of_patches
 
 # total of oil and sea pixels
+augmented_total_pixels = augmented_oil_pixels + augmented_sea_pixels
 print(
-    f"Augmented total pixel counts, oil: {augmented_oil_pixels}, sea: {augmented_sea_pixels}, total: {augmented_oil_pixels+augmented_sea_pixels}"
+    f"Augmented total pixel counts, oil: {augmented_oil_pixels}, sea: {augmented_sea_pixels}, total: {augmented_total_pixels}"
 )
-percentage_oil_pixels = round(
-    augmented_oil_pixels / (augmented_oil_pixels + augmented_sea_pixels), 2
-)
-percentage_sea_pixels = round(
-    augmented_sea_pixels / (augmented_oil_pixels + augmented_sea_pixels), 2
-)
+percentage_oil_pixels = round(augmented_oil_pixels / augmented_total_pixels, 2)
+percentage_sea_pixels = round(augmented_sea_pixels / augmented_total_pixels, 2)
 print(
     f"Percentage of augmented pixel counts, oil: {percentage_oil_pixels}, sea: {percentage_sea_pixels}"
 )
+total_oil_pixels += augmented_oil_pixels
+total_sea_pixels += augmented_sea_pixels
+total_pixels = total_oil_pixels + total_sea_pixels
+print(
+    f"Final total pixel counts, oil: {total_oil_pixels}, sea: {total_sea_pixels}, total: {total_pixels}"
+)
+print(
+    f"Percentage of pixel counts, oil: {round(total_oil_pixels/total_pixels,2)}, sea: {round(total_sea_pixels/total_pixels,2)}"
+)
+print(f"Total patches count: {total_mask_patches}")
 print("Done!")
