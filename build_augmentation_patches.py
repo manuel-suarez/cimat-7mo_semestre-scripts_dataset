@@ -59,7 +59,7 @@ transform = A.Compose(
 # Iterate over list of patches augmenting those with more than 10% of oil pixels until we have approximate the equal
 augmented_oil_pixels = 0
 augmented_sea_pixels = 0
-for index, row in mask_images_patches.iterrows():
+for index, row in tqdm(mask_images_patches.iterrows()):
     patch_oil_pixels = row["oil_pixels"]
     patch_sea_pixels = row["sea_pixels"]
     patch_total_pixels = row["total_pixels"]
